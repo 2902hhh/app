@@ -13,8 +13,17 @@
 
 import("//build/lite/config/component/lite_component.gni")
 
+# oled unit
+# lite_component("app") {
+#     features = [
+#         "ssd1306:oled_lib_app",
+#         "oled_demo:oled_demo",
+#     ]
+# }
+
+# ADC unit
 lite_component("app") {
     features = [
-        "ssd1306:app",
+        "ADC:adc_key",
     ]
 }

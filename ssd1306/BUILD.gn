@@ -27,10 +27,10 @@
 
 import("//build/lite/config/component/lite_component.gni")
 
-lite_component("app") {
+lite_component("oled_lib_app") {
     features = [
         "ssd1306:oled_ssd1306",
-        "examples:oled_test",
+        # "examples:oled_test",
         "libm_port:libm_port"
     ]
 }
