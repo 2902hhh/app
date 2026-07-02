@@ -22,8 +22,23 @@ import("//build/lite/config/component/lite_component.gni")
 # }
 
 # ADC unit
+# lite_component("app") {
+#     features = [
+#         "ADC:adc_key",
+#     ]
+# }
+
+# pwm unit
+# lite_component("app") {
+#     features = [
+#         "demo_pwm:demo_pwm",
+#     ]
+# }
+
+
+# wifi unit
 lite_component("app") {
     features = [
-        "ADC:adc_key",
+        "demo_wifi:demo_wifi_sta",
     ]
 }
