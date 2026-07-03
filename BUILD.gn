@@ -37,8 +37,15 @@ import("//build/lite/config/component/lite_component.gni")
 
 
 # wifi unit
+# lite_component("app") {
+#     features = [
+#         "demo_wifi:demo_wifi_sta",
+#     ]
+# }
+
+# mqtt unit
 lite_component("app") {
     features = [
-        "demo_wifi:demo_wifi_sta",
+        "mqtt_ttest:mqtt_test",
     ]
 }
