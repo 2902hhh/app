@@ -44,8 +44,15 @@ import("//build/lite/config/component/lite_component.gni")
 # }
 
 # mqtt unit
+# lite_component("app") {
+#     features = [
+#         "mqtt_ttest:mqtt_test",
+#     ]
+# }
+
+#robot unit
 lite_component("app") {
     features = [
-        "mqtt_ttest:mqtt_test",
+        "robot:robot_demo",
     ]
 }
