@@ -136,8 +136,7 @@ void keep(void* parame) {
             dir = 1;
         }
         sg90_flag = sg90_flag + dir*5;
-        //app_demo_pwm();
-        //usleep(5000000);
+
         set_angle(sg90_flag);
         osDelay(1);
     }

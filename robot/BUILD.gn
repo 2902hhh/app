@@ -27,17 +27,19 @@
 
 static_library("robot_demo") {
     sources = [
-        #"robot_hcsr04.c",
-        #"robot_l9110s.c",
-        #"robot_sg90_mid.c",
-        #"robot_sg90.c",
-        "robot_tcrt5000.c"
+        "robot_car.c",
+        "robot_motor.c",
+        "robot_ultrasonic.c",
+        "robot_servo.c",
+        "robot_tracking.c",
+        "robot_display.c",
     ]
 
     include_dirs = [
         "//utils/native/lite/include",
         "//kernel/liteos_m/kal/cmsis",
         "//base/iot_hardware/peripheral/interfaces/kits",
+        "//applications/sample/wifi-iot/app/ssd1306/ssd1306",
     ]
 }
 

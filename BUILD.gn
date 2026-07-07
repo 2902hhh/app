@@ -50,9 +50,10 @@ import("//build/lite/config/component/lite_component.gni")
 #     ]
 # }
 
-#robot unit
+#robot unit (循迹小车: 电机+舵机+超声+循迹+OLED)
 lite_component("app") {
     features = [
         "robot:robot_demo",
+        "ssd1306:oled_lib_app",
     ]
 }
