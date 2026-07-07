@@ -82,9 +82,9 @@
  * 系统常量
  * ============================================================================ */
 
-#define OBSTACLE_THRESHOLD_CM   15.0f   /* 障碍物判定距离 (厘米) */
+#define OBSTACLE_THRESHOLD_CM   20.0f   /* 障碍物判定距离 (厘米) */
 #define HCSR04_TIMEOUT_US       38000UL /* 超声波超时 (微秒), ~2m量程 */
-#define LINE_FOLLOW_DELAY_MS    30      /* 主循环周期 (毫秒) */
+#define LINE_FOLLOW_DELAY_MS    1      /* 主循环周期 (毫秒) */
 #define OLED_UPDATE_INTERVAL    5       /* OLED每N次循环刷新一次 */
 #define SERVO_PERIOD_US         20000   /* 舵机PWM周期 20ms */
 #define SERVO_SWEEP_STEP_US     50      /* 舵机每次扫描步进 (微秒) */
