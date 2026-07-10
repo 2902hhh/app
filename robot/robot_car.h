@@ -77,8 +77,8 @@
 #define PWM_FREQ            6000    /* PWM分频值 */
 #define SPEED_BRAKE         6000    /* 100%占空比 → 刹车(恒高) */
 #define SPEED_OFF           1       /* ≈0%占空比 → 惰行(恒低) */
-#define SPEED_FORWARD       3600    /* 前进占空比 ~33% (测试低速) */
-#define SPEED_TURN          3300    /* 转弯占空比 ~23% (避免过冲) */
+#define SPEED_FORWARD       4000    /* 前进占空比 ~33% (测试低速) */
+#define SPEED_TURN          3800    /* 转弯占空比 ~23% (避免过冲) */
 
 /* ============================================================================
  * 系统常量
@@ -88,11 +88,13 @@
 #define HCSR04_TIMEOUT_US       38000UL /* 超声波超时 (微秒), ~2m量程 */
 #define LINE_LOST_SEEK_US       6000000UL /* 三路全白后的短时寻线时间 */
 #define LINE_FOLLOW_DELAY_MS    1      /* 主循环周期 (毫秒) */
-#define PARK_BLACK_CONFIRM_CNT  8     /* 三路连续检测到黑色后停车的循环次数 */
+#define PARK_BLACK_CONFIRM_CNT  10     /* 三路连续检测到黑色后停车的循环次数 */
 #define SIDE_BLACK_PAIR_WINDOW_CNT 2   /* 左右边先后压黑的最大循环窗口 */
 #define SPECIAL_RIGHT_TURN_CNT  5      /* 左右边压黑特殊右转的循环次数 */
 #define BUTTON_DEBOUNCE_CNT      3     /* 按钮连续低电平确认次数 */
-#define OLED_UPDATE_INTERVAL    5      /* OLED每N次循环刷新一次 */
+#define ULTRASONIC_UPDATE_US    100000UL /* 超声波测距周期 100ms */
+#define OLED_UPDATE_US          200000UL /* OLED刷新周期 200ms */
+#define SENSOR_DISPLAY_DELAY_MS 5       /* 传感器显示线程轮询间隔 */
 #define SERVO_PERIOD_US         20000   /* 舵机PWM周期 20ms */
 #define SERVO_SWEEP_STEP_US     50      /* 舵机每次扫描步进 (微秒) */
 #define SERVO_MIN_US            1100     /* 舵机最小脉宽 (-90°) */
@@ -104,7 +106,8 @@
  * ============================================================================ */
 
 #define SERVO_STACK_SIZE    2048    /* 舵机线程栈 (仅需少量变量) */
-#define CONTROL_STACK_SIZE  6144    /* 控制线程栈 (含超声波+OLED I2C) */
+#define CONTROL_STACK_SIZE  6144    /* 控制线程栈 */
+#define SENSOR_DISPLAY_STACK_SIZE 4096 /* 超声波测距与OLED线程栈 */
 
 /* ============================================================================
  * 障碍物消抖参数
@@ -116,7 +119,7 @@
 /* ============================================================================
  * 多线程共享状态 (volatile 全局变量)
  *
- * 双线程架构: ServoThread + ControlThread(含OLED)
+ * 三线程架构: ServoThread + ControlThread + SensorDisplayThread
  * 线程间通过 volatile 变量通信, 单核 Cortex-M 上对齐的 32-bit 读写是原子的
  * ============================================================================ */
 

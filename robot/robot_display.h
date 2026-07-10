@@ -1,7 +1,7 @@
 /*
  * robot_display.h — OLED 显示模块 (SSD1306, I2C0, 128×64)
  *
- * 由控制线程在循环中周期性调用, 不在独立线程中运行
+ * 由低优先级 SensorDisplayThread 每 200ms 刷新一次
  */
 
 #ifndef ROBOT_DISPLAY_H

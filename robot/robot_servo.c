@@ -10,9 +10,9 @@
  *   - 每个脉冲周期 = 20ms (duty_us 高电平 + 余下低电平)
  *
  * 多线程架构:
- *   - servo_task() 在独立线程中运行 (osPriorityAboveNormal)
- *   - 使用 hi_udelay() 忙等待产生精确 50Hz 时序, 不可被抢占
- *   - 每发送 2 个脉冲 (40ms) 后通过 osDelay(1) 让出 CPU
+ *   - servo_task() 在独立线程中运行 (osPriorityNormal)
+ *   - 使用 hi_udelay() 忙等待产生 50Hz 软件 PWM
+ *   - 每发送 2 个脉冲 (40ms) 后通过 osDelay(8) 让出 CPU
  *   - 控制线程通过 g_servo_frozen 标志控制扫描/冻结
  *   - 舵机角度 g_servo_angle 和方向 g_servo_dir 为全局共享变量
  *
@@ -42,7 +42,7 @@ void servo_init(void)
  * 设置舵机角度 (发送单个 20ms PWM 周期)
  * 参数: duty_us - 高电平脉宽(微秒), 范围 1100~1900
  *
- * 此函数使用 hi_udelay() 忙等待, 全程约 20ms, 不可被抢占
+ * 此函数使用 hi_udelay() 忙等待, 单次调用约占用执行线程 20ms
  */
 void servo_set_angle(unsigned int duty_us)
 {
@@ -60,7 +60,7 @@ void servo_set_angle(unsigned int duty_us)
 /*
  * 舵机独立线程 — 独占 GPIO2 输出 50Hz PWM 脉冲
  *
- * 线程优先级: osPriorityNormal (与控制线程同级, 协作调度)
+ * 线程优先级: osPriorityNormal (与控制线程同级)
  *
  * 执行逻辑:
  *   1. 初始化舵机 GPIO 并归中
@@ -68,9 +68,8 @@ void servo_set_angle(unsigned int duty_us)
  *   3. g_servo_frozen=1 时冻结角度, 不更新扫描方向
  *
  * 时序设计:
- *   - 2 个连续脉冲 = 40ms 精确 50Hz 信号 (hi_udelay 不可抢占)
- *   - osDelay(8) 让出约 8ms 给控制线程 (足够完成传感器+决策)
- *   - 控制线程在此期间完成一次完整循环
+ *   - 2 个连续脉冲约占用 40ms
+ *   - osDelay(8) 允许控制线程和低优先级传感器显示线程运行
  *   - 舵机 8ms 信号间隙约为周期的 16%, 略有抖动但可接受
  */
 void servo_task(void *param)
@@ -96,11 +95,11 @@ void servo_task(void *param)
         }
         /* 注意: g_servo_frozen=1 时不更新角度, 舵机停在当前位置 */
 
-        /* ---- 发送 2 个连续脉冲 (40ms, hi_udelay, 不可抢占) ---- */
+        /* ---- 发送 2 个连续脉冲 (约 40ms) ---- */
         servo_set_angle(g_servo_angle);
         servo_set_angle(g_servo_angle);
 
-        /* ---- 让出 CPU 给控制线程 (约 8ms) ---- */
+        /* ---- 让出 CPU 给其他线程 (约 8ms) ---- */
         osDelay(8);
     }
 }

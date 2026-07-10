@@ -10,6 +10,7 @@
  *
  * 改进: 加入 38ms 超时保护 (对应约 2m 最大量程), 防止传感器故障时死循环
  *       看门狗在初始化时禁用一次, 不在每次测距时重复调用
+ *       测距由低优先级 SensorDisplayThread 周期调用, 不阻塞循迹控制线程
  *
  * GPIO: TRIG=GPIO7(输出), ECHO=GPIO8(输入)
  */
@@ -37,7 +38,7 @@ void ultrasonic_init(void)
  * 获取超声波测距值
  * 返回值: 距离 (厘米), 超时或超出量程返回 -1.0
  *
- * 注: 此函数包含 spin-wait 循环, 最多阻塞约 38ms
+ * 注: 此函数包含轮询等待, 最多占用调用线程约 38ms
  */
 float ultrasonic_get_distance(void)
 {

@@ -10,7 +10,7 @@
 /* 初始化超声波传感器GPIO (TRIG=输出, ECHO=输入) */
 void ultrasonic_init(void);
 
-/* 获取超声波测距值, 返回距离(cm), 超时/无回波返回 -1.0 */
+/* 执行一次阻塞测距, 返回距离(cm), 超时/无回波返回 -1.0 */
 float ultrasonic_get_distance(void);
 
 #endif /* ROBOT_ULTRASONIC_H */
