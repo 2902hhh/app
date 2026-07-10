@@ -67,27 +67,62 @@ volatile int g_servo_frozen = 0;        /* 1=冻结(有障碍), 0=正常扫描 *
  *
  * 返回值: 当前执行的动作描述字符串
  */
-static const char* line_follow_step(int left_white, int right_white)
+static const char* line_follow_step(int left_white, int center_white, int right_white,
+                                    int *last_turn_dir, unsigned long *lost_start_us)
 {
-    if (left_white && right_white) {
-        /* 情况1: 双白 → 黑线在两个传感器之间, 直行 */
+    unsigned long now = hi_get_us();
+
+    if (left_white && !center_white && right_white) {
         car_forward(SPEED_FORWARD);
+        *lost_start_us = 0;
         return "FORWARD";
 
     } else if (!left_white && right_white) {
-        /* 情况2: 左黑右白 → 车身偏左, 左传感器压到黑线 → 右转修正 */
-        //car_right(SPEED_TURN);
+        *last_turn_dir = -1;
+        *lost_start_us = 0;
         car_left(SPEED_TURN);
         return "TURN L>";
 
     } else if (left_white && !right_white) {
-        /* 情况3: 左白右黑 → 车身偏右, 右传感器压到黑线 → 左转修正 */
-        //car_left(SPEED_TURN);
+        *last_turn_dir = 1;
+        *lost_start_us = 0;
         car_right(SPEED_TURN);
         return "<TURN R";
 
+    } else if (!left_white && !center_white && !right_white) {
+        *lost_start_us = 0;
+        car_forward(SPEED_FORWARD);
+        return "FORWARD";
+
+    } else if (!left_white && center_white && !right_white) {
+        *last_turn_dir = 1;
+        *lost_start_us = 0;
+        car_right(SPEED_TURN);
+        return "<TURN R";
+
+    } else if (left_white && center_white && right_white) {
+        if (*lost_start_us == 0) {
+            *lost_start_us = now;
+        }
+
+        if ((now - *lost_start_us) >= LINE_LOST_SEEK_US) {
+            car_stop();
+            return "LOST!";
+        }
+
+        if (*last_turn_dir < 0) {
+            car_left(SPEED_TURN);
+            return "SEEK L";
+        } else if (*last_turn_dir > 0) {
+            car_right(SPEED_TURN);
+            return "SEEK R";
+        } else {
+            car_forward(SPEED_FORWARD);
+            return "SEEK..";
+        }
+
     } else {
-        /* 情况4: 双黑 → 可能是十字路口或宽黑线, 继续前进 */
+        *lost_start_us = 0;
         car_forward(SPEED_FORWARD);
         return "FORWARD";
     }
@@ -114,6 +149,7 @@ static void control_task(void *param)
     /* ---- 状态变量 ---- */
     int loop_count = 0;                     /* 主循环计数器 */
     int left_white = 1;                     /* 左循迹: 1=白底, 0=黑线 */
+    int center_white = 1;                   /* 中间循迹: 1=白底, 0=黑线 */
     int right_white = 1;                    /* 右循迹: 1=白底, 0=黑线 */
     float distance = 0.0f;                  /* 超声波测距值 (cm) */
     const char *action = "INIT..";          /* 当前动作描述 */
@@ -121,6 +157,15 @@ static void control_task(void *param)
     int obstacle_waiting = 0;               /* 障碍等待标志 */
     int obs_count = 0;                      /* 障碍检测消抖计数 */
     int clear_count = 0;                    /* 障碍清除消抖计数 */
+    int last_turn_dir = 0;                  /* 最近一次修正方向: -1=左修正, 1=右修正 */
+    unsigned long lost_start_us = 0;        /* 三路全白开始时间 */
+    int all_black_count = 0;                /* 三路连续检测到黑色的循环次数 */
+    int parked = 0;                         /* 停车标志，触发后保持停车 */
+    int button_press_count = 0;              /* 停车解除按钮消抖计数 */
+    int parking_rearm_wait = 0;              /* 离开全黑区域后才允许再次停车 */
+    int left_black_age = SIDE_BLACK_PAIR_WINDOW_CNT + 1;
+    int right_black_age = SIDE_BLACK_PAIR_WINDOW_CNT + 1;
+    int special_right_turn_count = 0;
 
     printf("\r\n[Control] ====== XunJi Car Starting (2-Thread) ======\r\n");
 
@@ -150,7 +195,7 @@ static void control_task(void *param)
     osDelay(300);
 
     /* ---- 启动画面 ---- */
-    display_update(0.0f, 1, 1, "INIT..", "CENTER");
+    display_update(0.0f, 1, 1, 1, "INIT..", "CENTER");
     osDelay(300);
 
     printf("[Control] Main loop started (period=%dms, threshold=%.0fcm, "
@@ -173,7 +218,21 @@ static void control_task(void *param)
 
     while (1) {
         /* --- 1. 读取循迹传感器 --- */
-        tracking_read(&left_white, &right_white);
+        tracking_read(&left_white, &center_white, &right_white);
+
+        if (parked && parking_button_pressed()) {
+            button_press_count++;
+            if (button_press_count >= BUTTON_DEBOUNCE_CNT) {
+                parked = 0;
+                all_black_count = 0;
+                button_press_count = 0;
+                parking_rearm_wait = 1;
+                last_turn_dir = 0;
+                lost_start_us = 0;
+            }
+        } else {
+            button_press_count = 0;
+        }
 
         /* --- 2. 读取超声波距离 --- */
         distance = ultrasonic_get_distance();
@@ -190,6 +249,9 @@ static void control_task(void *param)
                     car_stop();
                     obstacle_waiting = 1;
                     g_servo_frozen = 1;             /* 冻结舵机 */
+                    last_turn_dir = 0;
+                    lost_start_us = 0;
+                    all_black_count = 0;
                     obs_count = 0;
                     printf("[Control] !! OBSTACLE! dist:%.1f cm\r\n", distance);
                 }
@@ -205,15 +267,77 @@ static void control_task(void *param)
                     /* 连续多次未检测到 → 确认障碍已清除, 恢复循迹 */
                     obstacle_waiting = 0;
                     g_servo_frozen = 0;             /* 恢复舵机扫描 */
+                    last_turn_dir = 0;
+                    lost_start_us = 0;
                     clear_count = 0;
                     printf("[Control] Obstacle cleared, resuming\r\n");
                 }
             }
         }
 
-        /* --- 4. 循迹控制 (无障碍时执行) --- */
-        if (!obstacle_waiting) {
-            action = line_follow_step(left_white, right_white);
+        /* --- 4. 三路黑色停车检测与循迹控制 --- */
+        if (parking_rearm_wait) {
+            all_black_count = 0;
+            if (left_white || center_white || right_white) {
+                parking_rearm_wait = 0;
+            }
+        } else if (!obstacle_waiting && !parked) {
+            if (!left_white && !center_white && !right_white) {
+                all_black_count++;
+                if (all_black_count >= PARK_BLACK_CONFIRM_CNT) {
+                    parked = 1;
+                    car_stop();
+                    action = "PARKED";
+                }
+            } else {
+                all_black_count = 0;
+            }
+        } else if (obstacle_waiting) {
+            all_black_count = 0;
+        }
+
+        if (obstacle_waiting || parked) {
+            left_black_age = SIDE_BLACK_PAIR_WINDOW_CNT + 1;
+            right_black_age = SIDE_BLACK_PAIR_WINDOW_CNT + 1;
+            special_right_turn_count = 0;
+        } else {
+            int all_black = (!left_white && !center_white && !right_white);
+            int both_side_black_center_white = (!left_white && center_white && !right_white);
+
+            if (!left_white) {
+                left_black_age = 0;
+            } else if (left_black_age <= SIDE_BLACK_PAIR_WINDOW_CNT) {
+                left_black_age++;
+            }
+
+            if (!right_white) {
+                right_black_age = 0;
+            } else if (right_black_age <= SIDE_BLACK_PAIR_WINDOW_CNT) {
+                right_black_age++;
+            }
+
+            if (!all_black &&
+                (both_side_black_center_white ||
+                 (left_black_age <= SIDE_BLACK_PAIR_WINDOW_CNT &&
+                  right_black_age <= SIDE_BLACK_PAIR_WINDOW_CNT))) {
+                special_right_turn_count = SPECIAL_RIGHT_TURN_CNT;
+            }
+        }
+
+        if (obstacle_waiting) {
+            action = "OBSTACLE!";
+        } else if (parked) {
+            car_stop();
+            action = "PARKED";
+        } else if (special_right_turn_count > 0) {
+            special_right_turn_count--;
+            last_turn_dir = 1;
+            lost_start_us = 0;
+            car_right(SPEED_TURN);
+            action = "<TURN R";
+        } else {
+            action = line_follow_step(left_white, center_white, right_white,
+                                      &last_turn_dir, &lost_start_us);
         }
 
         /* --- 5. 更新舵机标签 (供 OLED 显示) --- */
@@ -225,7 +349,7 @@ static void control_task(void *param)
 
         /* --- 6. OLED 刷新 (节流: 每 N 次循环) --- */
         if (loop_count % OLED_UPDATE_INTERVAL == 0) {
-            display_update(distance, left_white, right_white,
+            display_update(distance, left_white, center_white, right_white,
                           action, servo_label);
         }
 

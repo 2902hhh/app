@@ -17,11 +17,12 @@ void display_init(void);
  * 参数:
  *   distance     - 超声波测距值(cm), -1表示超时
  *   left_white   - 左循迹传感器: 1=白, 0=黑
+ *   center_white - 中间循迹传感器: 1=白, 0=黑
  *   right_white  - 右循迹传感器: 1=白, 0=黑
  *   action       - 当前动作描述
  *   servo_label  - 舵机扫描方向标签
  */
-void display_update(float distance, int left_white, int right_white,
+void display_update(float distance, int left_white, int center_white, int right_white,
                     const char *action, const char *servo_label);
 
 #endif /* ROBOT_DISPLAY_H */

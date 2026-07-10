@@ -21,6 +21,7 @@ void tracking_init(void);
  *   left_is_white  - [输出] 左侧: 1=白底, 0=黑线
  *   right_is_white - [输出] 右侧: 1=白底, 0=黑线
  */
-void tracking_read(int *left_is_white, int *right_is_white);
+void tracking_read(int *left_is_white, int *center_is_white, int *right_is_white);
+int parking_button_pressed(void);
 
 #endif /* ROBOT_TRACKING_H */

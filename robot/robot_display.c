@@ -63,7 +63,7 @@ void display_init(void)
  *   action      - 当前动作的字符串描述
  *   servo_label - 舵机扫描方向标签
  */
-void display_update(float distance, int left_white, int right_white,
+void display_update(float distance, int left_white, int center_white, int right_white,
                     const char *action, const char *servo_label)
 {
     char buf[22];  /* 128像素 / Font_7x10宽度(7px) ≈ 18字符 */
@@ -89,9 +89,10 @@ void display_update(float distance, int left_white, int right_white,
 
     /* ---- 第3行: 循迹传感器状态 (Y=25) ---- */
     ssd1306_SetCursor(0, 25);
-    snprintf(buf, sizeof(buf), "Line: L=%s R=%s",
-             left_white  ? "WHT" : "BLK",
-             right_white ? "WHT" : "BLK");
+    snprintf(buf, sizeof(buf), "Line:L=%c C=%c R=%c",
+             left_white   ? 'W' : 'B',
+             center_white ? 'W' : 'B',
+             right_white  ? 'W' : 'B');
     ssd1306_DrawString(buf, Font_7x10, White);
 
     /* ---- 第4行: 当前动作 (Y=36) ---- */
@@ -107,4 +108,3 @@ void display_update(float distance, int left_white, int right_white,
     /* 刷新到物理屏幕 */
     ssd1306_UpdateScreen();
 }
-

@@ -8,8 +8,8 @@
  *   电机(L9110S):   GPIO0=左IN1(PWM3), GPIO1=左IN2(PWM4)
  *                   GPIO9=右IN1(PWM0), GPIO10=右IN2(PWM1)
  *   超声波(HC-SR04): GPIO7=TRIG(输出),  GPIO8=ECHO(输入)
- *   循迹(TCRT5000):  GPIO11=左传感器(输入), GPIO12=右传感器(输入)
- *                   注意: 两个传感器分布在黑线两侧, 正常时两个都检测到白色
+ *   循迹(TCRT5000):  GPIO11=左传感器(输入), GPIO3=中间传感器(输入), GPIO12=右传感器(输入)
+ *   停车解除按钮:     GPIO5=按钮输入(内部上拉, 按下为低电平)
  *   舵机(SG90):      GPIO2=控制信号(输出, 软件PWM)
  *   OLED(SSD1306):   GPIO13=I2C0_SDA, GPIO14=I2C0_SCL
  */
@@ -48,9 +48,11 @@
 #define HCSR04_TRIG     7       /* 触发信号 (GPIO输出) */
 #define HCSR04_ECHO     8       /* 回响信号 (GPIO输入) */
 
-/* ---- 红外循迹 TCRT5000 (分布在黑线两侧) ---- */
+/* ---- 红外循迹 TCRT5000 (左/中/右三路) ---- */
 #define TCRT5000_L      11      /* 左侧传感器 (输入) */
+#define TCRT5000_C      3       /* 中间传感器 (输入) */
 #define TCRT5000_R      12      /* 右侧传感器 (输入) */
+#define PARK_RELEASE_BUTTON 5   /* 停车解除按钮，内部上拉，按下为低电平 */
 
 /* ---- 舵机 SG90 (安装在车头, 超声固定其上) ---- */
 #define SERVO_PIN       2       /* 舵机控制信号 (GPIO输出) */
@@ -75,17 +77,22 @@
 #define PWM_FREQ            6000    /* PWM分频值 */
 #define SPEED_BRAKE         6000    /* 100%占空比 → 刹车(恒高) */
 #define SPEED_OFF           1       /* ≈0%占空比 → 惰行(恒低) */
-#define SPEED_FORWARD       3000    /* 前进占空比 ~33% (测试低速) */
-#define SPEED_TURN          3000    /* 转弯占空比 ~23% (避免过冲) */
+#define SPEED_FORWARD       3600    /* 前进占空比 ~33% (测试低速) */
+#define SPEED_TURN          3300    /* 转弯占空比 ~23% (避免过冲) */
 
 /* ============================================================================
  * 系统常量
  * ============================================================================ */
 
-#define OBSTACLE_THRESHOLD_CM   20.0f   /* 障碍物判定距离 (厘米) */
+#define OBSTACLE_THRESHOLD_CM   10.0f   /* 障碍物判定距离 (厘米) */
 #define HCSR04_TIMEOUT_US       38000UL /* 超声波超时 (微秒), ~2m量程 */
+#define LINE_LOST_SEEK_US       6000000UL /* 三路全白后的短时寻线时间 */
 #define LINE_FOLLOW_DELAY_MS    1      /* 主循环周期 (毫秒) */
-#define OLED_UPDATE_INTERVAL    5       /* OLED每N次循环刷新一次 */
+#define PARK_BLACK_CONFIRM_CNT  8     /* 三路连续检测到黑色后停车的循环次数 */
+#define SIDE_BLACK_PAIR_WINDOW_CNT 2   /* 左右边先后压黑的最大循环窗口 */
+#define SPECIAL_RIGHT_TURN_CNT  5      /* 左右边压黑特殊右转的循环次数 */
+#define BUTTON_DEBOUNCE_CNT      3     /* 按钮连续低电平确认次数 */
+#define OLED_UPDATE_INTERVAL    5      /* OLED每N次循环刷新一次 */
 #define SERVO_PERIOD_US         20000   /* 舵机PWM周期 20ms */
 #define SERVO_SWEEP_STEP_US     50      /* 舵机每次扫描步进 (微秒) */
 #define SERVO_MIN_US            1100     /* 舵机最小脉宽 (-90°) */
